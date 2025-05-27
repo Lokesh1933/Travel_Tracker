@@ -17,18 +17,18 @@ const db = new pg.Client({
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static("public"));
 db.connect()
-const result = await db.query("SELECT * FROM visited_countries",(res,err) =>{
-  if (err) {
-    console.error("Error executing query", err.stack);
-  } else {
-    console.log("Query result:", res.rows);
-  }
-})
   
 app.get("/", async (req, res) => {
   //Write your code here.
-  const result = await db.query("SELECT * FROM visited_countries")
- res.render("index.ejs",{countries:result.rows, total: result.rows.length});
+  const result = await db.query("SELECT country_code FROM visited_countries")
+  let countries = [];
+  result.rows.forEach((country) => {
+    countries.push(country.country_code);
+  });
+  console.log(result.rows);
+
+ res.render("index.ejs",{countries:countries, total: countries.length});
+ db.end()
 
 });
 
