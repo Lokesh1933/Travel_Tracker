@@ -31,6 +31,22 @@ app.get("/", async (req, res) => {
   db.end();
 });
 
+app.post("/add", async (req, res) => {
+  const input = req.body["country"];
+  const result = await db.query("select country_code from countries where country_name = $1",[input])
+  if(result.rows.length !== 0){
+    const data = result.rows[0]
+    const countryCode = data.country_code
+    await db.query(
+      "INSERT INTO visited_countries (country_code) VALUES ($1)",
+      [countryCode]
+    );
+    res.redirect("/");
+  } else {
+    res.status(404).send("Country not found");
+  }
+});
+
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
