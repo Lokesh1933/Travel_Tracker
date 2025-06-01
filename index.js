@@ -14,36 +14,60 @@ const db = new pg.Client({
   port: 5432,
 });
 
+db.connect();
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static("public"));
-db.connect();
-
-app.get("/", async (req, res) => {
-  
+async function checkVisisted() {
   const result = await db.query("SELECT country_code FROM visited_countries");
+
   let countries = [];
   result.rows.forEach((country) => {
     countries.push(country.country_code);
   });
-  console.log(result.rows);
+  return countries;
+}
+
+app.get("/", async (req, res) => {
+  
+  const countries = await checkVisisted()
 
   res.render("index.ejs", { countries: countries, total: countries.length });
-  // db.end();
 });
 
 app.post("/add", async (req, res) => {
   const input = req.body["country"];
-  const result = await db.query("select country_code from countries where country_name = $1",[input])
-  if(result.rows.length !== 0){
-    const data = result.rows[0]
-    const countryCode = data.country_code
-    await db.query(
-      "INSERT INTO visited_countries (country_code) VALUES ($1)",
-      [countryCode]
+
+  try {
+    const result = await db.query(
+      "SELECT country_code FROM countries WHERE LOWER(country_name) like '%' || $1 || '%'",
+      [input.toLowerCase()]
     );
-    res.redirect("/");
-  } else {
-    res.status(404).send("Country not found");
+
+    const data = result.rows[0];
+    const countryCode = data.country_code;
+    try {
+      await db.query(
+        "INSERT INTO visited_countries (country_code) VALUES ($1)",
+        [countryCode]
+      );
+      res.redirect("/");
+    } catch (err) {
+      console.log(err);
+      const countries = await checkVisisted();
+      res.render("index.ejs", {
+        countries: countries,
+        total: countries.length,
+        error: "Country has already been added, try again.",
+      });
+    }
+  } catch (err) {
+    console.log(err);
+    const countries = await checkVisisted();
+    res.render("index.ejs", {
+      countries: countries,
+      total: countries.length,
+      error: "Country name does not exist, try again.",
+    });
   }
 });
 
